@@ -36,35 +36,28 @@ def get__os_file_type():
     file = filetype.guess('tmp/downloaded_file')
     return file.extension
 
-def get__file_size():
-    try:
-        size_b = int(response.headers['Content-Length'])
-    except:
-        size_b = os.path.getsize(f'tmp/downloaded_file')
-    return size_b
-
 def first_download():
     try:
-        request()
+        first_request_time = request()
         if response.status_code == 200:
             open(f'tmp/downloaded_file', 'wb').write(downloaded_content)
 
-            global file_size, file_type
-            file_size = get__file_size()
+            global file_type
             file_type = get__file_type()
 
-            return True
+            return first_request_time
 
         else:
             print('response status code =', response.status_code)
-            return False
+            return None
     except Exception as error:
         print('unexpected error:', error)
-        return False
+        return None
 
 def request():
     global response, downloaded_content
 
+    time_start = time.perf_counter()
     response = requests.get(
         link,
         headers = {
@@ -74,7 +67,6 @@ def request():
         )
     chunks = [] 
     downloaded = 0 # кол-во полученных байт
-    time_start = time.perf_counter()
 
     for chunk in response.iter_content(chunk_size=64 * 1024): # перебор частей по 64кб
         if not chunk:
@@ -87,7 +79,7 @@ def request():
         elapsed = time.perf_counter() - time_start
         if elapsed > 0:
             average_download_speed = downloaded / elapsed
-            average_download_speed_mb = round((average_download_speed / (1024 * 1024)), 3)
+            average_download_speed_mb = round(average_download_speed / 1_000_000, 3)
             print(
                 f'\rСкорость скачивания: {average_download_speed_mb} Mb/s', # /r для печати в той же строке
                 end='', # замена дефолтного \n на ''
@@ -98,32 +90,36 @@ def request():
     downloaded_content = b''.join(chunks)
     print()
 
-    return round(request_time, 3)
+    return request_time
 
 request_time = 0.0
+all_downloaded_bytes = 0
 downloaded_content = b''
 average_download_speed = 0.0
 
 for i in range(COUNT):
 
     if i == 0:
-        result = first_download()
-        if not result:
+        first_request_time = first_download()
+        if first_request_time is None:
             sys.exit(1) # завершение с ошибкой
-        
+
+        request_time += first_request_time
+        all_downloaded_bytes += len(downloaded_content)
         os.rename("tmp/downloaded_file", f"files/downloaded_file.{file_type}")
         continue
 
     request_time += request()
+    all_downloaded_bytes += len(downloaded_content)
     open(f'files/downloaded_file.{file_type}', 'wb').write(downloaded_content)
 
 average_request_time = round((request_time / COUNT), 3)
 
 print('Общий объём скачанных данных:')
-size = file_size * COUNT
-size_kb = round((size / 1024), 2)
+size_b = all_downloaded_bytes
+size_kb = round(size_b / 1_000, 2)
 print(f'{size_kb} Kb')
-print(f'{round((size_kb / 1024), 2)} Mb')
+print(f'{round(size_b / 1_000_000, 2)} Mb')
 
 print('Среднее время запроса -', average_request_time, 's')
 input('Нажмите Enter для выхода..')
