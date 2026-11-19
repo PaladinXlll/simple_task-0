@@ -13,10 +13,14 @@ links = ['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8GhNc-8suOjv6I6
 # link = 'https://data.source.coop/harvard-lil/smithsonian-open-access/media/nzp/NZP-1501-1JC.tif'
 COUNT = 10
 
-shutil.rmtree("tmp")
-Path("tmp").mkdir()
-shutil.rmtree("files")
-Path("files").mkdir()
+# Создание и очистка необходимых папок
+for folder in ("tmp", "files"):
+    folder_path = Path(folder)
+
+    if folder_path.exists():
+        shutil.rmtree(folder_path)
+
+    folder_path.mkdir()
 
 def get__file_type():
     try:
@@ -122,3 +126,4 @@ print(f'{size_kb} Kb')
 print(f'{round((size_kb / 1024), 2)} Mb')
 
 print('Среднее время запроса -', average_request_time, 's')
+input('Нажмите Enter для выхода..')
